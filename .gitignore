@@ -79,6 +79,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+item_count.ipynb
 
 # IPython
 profile_default/
@@ -130,3 +131,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# data
+rsc15_test.txt
+rsc15_train_full.txt
+rsc15_train_tr.txt
+rsc15_train_valid.txt
