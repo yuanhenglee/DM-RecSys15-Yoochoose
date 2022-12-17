@@ -30,8 +30,14 @@ File Structure:
 ├── README.md
 ├── data
 ├── model
+│   ├── Classifier
+│   ├── Gru4Rec
+│   ├── TODO.md
+│   └── itemCF
 ├── output
+│   └── TODO.md
 └── src
+    └── TODO.md
 
-4 directories, 1 file
+7 directories, 4 files
 ```
