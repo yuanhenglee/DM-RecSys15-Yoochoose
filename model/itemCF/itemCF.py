@@ -7,9 +7,26 @@ from operator import itemgetter
 import argparse
 
 def LoadData(filepath):
-    with open(filepath) as f:
-        lines = f.readlines()
-        return PreProcessData(lines)
+    trainData = dict()
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
+    for i in range(1, len(data)):
+        trainData[i] = data[i]
+        i = i + 1
+    return trainData
+
+def Load_testData(filepath):
+    X = []
+    y = []
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
+    for i in range(1, len(data[0])):
+        X.append(data[0][i])
+        i = i + 1
+    for i in range(1, len(data[1])):
+        y.append(data[1][i])
+        i = i + 1
+    return X, y
 
 def CreateCandidate(filepath):
     with open(filepath) as f:
@@ -85,31 +102,29 @@ class ItemCF(object):
         with open("itemSimMatrix.pickle", 'wb') as f:
             pickle.dump(self._itemSimMatrix, f)
 
-    def recommend(self, user, N, K):
+    def recommend(self, items, N, K):
         """
-        user: target user (to provide recommendation)
+        items: a list containing known prefered items
         N: number of item to recommend
         K: number of similar items to search for
         return value: recommend item list of user, sort by similarity
         """
         recommends = dict()
         
-        # get the items that target user prefer
-        items = self._trainData[user]
-        
         point = 1
         for item in items:
             # find K most similar item from the similarity matrix
-            for i, sim in sorted(self._itemSimMatrix[item].items(), key=itemgetter(1), reverse=True)[:K]:
-                if i in items:
-                    continue  # skip if already in user preference item list
-                recommends.setdefault(i, 0.)
-                recommends[i] += sim * point
-            point += 1.5
+            if(item in self._itemSimMatrix):
+                for i, sim in sorted(self._itemSimMatrix[item].items(), key=itemgetter(1), reverse=True)[:K]:
+                    if i in items:
+                        continue  # skip if already in user preference item list
+                    recommends.setdefault(i, 0.)
+                    recommends[i] += sim * point
+                point += 1.5
         
         # return recommend item list of user, sort by similarity
         return sorted(recommends.items(), key=itemgetter(1), reverse=True)[:N]
-
+    
     def train(self):
         self.similarity()
 
@@ -122,44 +137,62 @@ class ItemCF(object):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--sid', default=1, type=int)
-    parser.add_argument('-c', '--cand', default=None, type=str)
+    parser.add_argument('-t', '--test', default=None, type=str)
     return parser
+
+def evaluate(model, test_X, test_y, k):
+    """
+    model: pretrained model itemCF
+    test_X: list of sessions
+    test_y: list of the labels of the sessions
+    k: length of recommendation list
+    """
+    mrr = 0
+    recall = 0
+    data_len = len(test_X)
+
+    for i in range(0, len(test_X)):
+        session = test_X[i]
+        ground_truth = test_y[i]
+        ans = model.recommend(session, k, k*2)
+        rank = 0
+        for j,m in ans:
+            rank = rank + 1
+            if(j ==  ground_truth):
+                mrr = mrr + float(1/rank)
+                recall = recall + 1            
+    
+    mrr = float(mrr/data_len)
+    recall = float(recall/data_len)
+
+    return mrr, recall
 
 if __name__ == "__main__":
 
     parser = get_parser()
     args = parser.parse_args()
 
-    target_user = args.sid
-    candidate_path = args.cand
+    test_path = args.test
 
-    print("Loading train data...")
-    train = LoadData(r"../../data/rsc15_train_tr.txt")
-
-    ItemCF = ItemCF(train, similarity='iuf', norm=False)
+    myItemCF = ItemCF([], similarity='iuf', norm=False)
     cand_score_dict = {}
 
-    if(candidate_path!=None):
-        print("Loading candidate item list...")
-        candidate = CreateCandidate(candidate_path)
+    if(test_path!=None):
+        print("Loading test list...")
+        test_X, test_y = Load_testData(test_path)
         
         print("Loading itemSimMatrix...")
-        ItemCF.load_itemSimMatrix("itemSimMatrix.pickle")
+        myItemCF.load_itemSimMatrix("itemSimMatrix.pickle")
 
-        print("Creating recommendation...")
-        fp = open(r"../../output/itemCF_recommend_"+str(target_user)+".txt", "w")
-        fp.write("item_id\tscore\n")
+        print("Evaluate on %s ..." % test_path.split('/')[-1])
+        k = 3
+        mrr, recall = evaluate(myItemCF, test_X, test_y, k)
+        print("MRR@%d: %.6f" % (k, mrr))
+        print("Recall@%d: %.6f" % (k, recall))
 
-        ans = ItemCF.recommend(target_user, 1000, 2000)
-        count = 1
-        for j,k in ans:
-            if(count > 100):
-                break
-            if(j in candidate):
-                fp.write(str(j)+'\t'+str(k)+'\n')
-                cand_score_dict[j] = k
-                count = count + 1
     else:
+        print("Loading train data...")
+        train = LoadData(r"../../data/all_train_seq.txt")
+        myItemCF = ItemCF(train, similarity='iuf', norm=False)
         print("Training...")
-        ItemCF.train()
+        myItemCF.train()
