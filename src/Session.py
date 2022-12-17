@@ -27,10 +27,10 @@ class Session:
 
 
 if __name__ == '__main__':
-    with open('../../data/yoochoose1_64/train.txt', 'rb') as f:
+    with open('../data/yoochoose1_64/train.txt', 'rb') as f:
         train_itemsets, train_labels = pickle.load(f)
 
-    with open('../../data/yoochoose1_64/test.txt', 'rb') as f:
+    with open('../data/yoochoose1_64/test.txt', 'rb') as f:
         test_itemsets, test_labels = pickle.load(f)
 
     candidates = [test_labels[0]]
