@@ -27,15 +27,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.train:
-        x_train = [s[0].session_embedding( candidates, method = 'acc') for s in train_sessions[:1000]]
-        y_train = [s[1] for s in train_sessions[:1000]]
+        print( "train mode" )
+
+        x_train = [s[0].session_embedding( candidates, method = 'acc') for s in train_sessions]
+        y_train = [s[1] for s in train_sessions]
 
 
-        print( "model training...")
-        clf = KNeighborsClassifier( n_neighbors=100 )
+        print( "model training")
+        clf = KNeighborsClassifier( n_neighbors=N_NEIGHBOR, metric='cosine', n_jobs=8 )
         clf.fit( x_train, y_train )
 
-        print( "dump result...")
+        print( "dump result")
 
         joblib.dump(clf, '../model/Classifier/knn.model')
 
@@ -52,11 +54,14 @@ if __name__ == '__main__':
         result = []
         for pred in y_pred:
             top20_items = []
-            top20_indices = np.argsort(pred)[-20:]
-            top20_indices = np.flip(top20_indices, 0)
-
-            for i in top20_indices:
-                top20_items.append( clf.classes_[i] )
+            top_indices = np.argsort(pred)[::-1]
+            for i in top_indices:
+                if pred[i] in candidates:
+                    top20_items.append( clf.classes_[i] )
+                    if len(top20_items) == 20:
+                        break
+            if len(top20_items) < 20:
+                top20_items.extend([0]*(20-len(top20_items)))
             result.append( top20_items )
 
         np.save( '../output/knn_pred', np.array(result) )
