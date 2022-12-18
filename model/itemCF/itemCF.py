@@ -10,23 +10,27 @@ def LoadData(filepath):
     trainData = dict()
     with open(filepath, 'rb') as f:
         data = pickle.load(f)
-    for i in range(1, len(data)):
+    for i in range(0, len(data)):
         trainData[i] = data[i]
         i = i + 1
     return trainData
 
 def Load_testData(filepath):
+    SID = []
     X = []
     y = []
     with open(filepath, 'rb') as f:
         data = pickle.load(f)
-    for i in range(1, len(data[0])):
-        X.append(data[0][i])
+    for i in range(0, len(data[0])):
+        SID.append(data[0][i])
         i = i + 1
-    for i in range(1, len(data[1])):
-        y.append(data[1][i])
+    for i in range(0, len(data[1])):
+        X.append(data[1][i])
         i = i + 1
-    return X, y
+    for i in range(0, len(data[3])):
+        y.append(data[3][i])
+        i = i + 1
+    return SID, X, y
 
 def CreateCandidate(filepath):
     with open(filepath) as f:
@@ -140,7 +144,7 @@ def get_parser():
     parser.add_argument('-t', '--test', default=None, type=str)
     return parser
 
-def evaluate(model, test_X, test_y, k):
+def evaluate(model, SID, test_X, test_y, k):
     """
     model: pretrained model itemCF
     test_X: list of sessions
@@ -150,18 +154,21 @@ def evaluate(model, test_X, test_y, k):
     mrr = 0
     recall = 0
     data_len = len(test_X)
+    fp = open(r'../../output/itemCF_test_out_64_'+str(k)+'.txt', 'w')
+    fp.write('session_id, item_id, score\n')
 
     for i in range(0, len(test_X)):
         session = test_X[i]
         ground_truth = test_y[i]
-        ans = model.recommend(session, k, k*2)
+        ans = model.recommend(session, k, 1000)
         rank = 0
         for j,m in ans:
+            fp.write(str(SID[i])+','+str(j)+','+str(m)+'\n')
             rank = rank + 1
             if(j ==  ground_truth):
                 mrr = mrr + float(1/rank)
                 recall = recall + 1            
-    
+    fp.close()
     mrr = float(mrr/data_len)
     recall = float(recall/data_len)
 
@@ -179,16 +186,16 @@ if __name__ == "__main__":
 
     if(test_path!=None):
         print("Loading test list...")
-        test_X, test_y = Load_testData(test_path)
+        SID, test_X, test_y = Load_testData(test_path)
         
         print("Loading itemSimMatrix...")
         myItemCF.load_itemSimMatrix("itemSimMatrix.pickle")
 
         print("Evaluate on %s ..." % test_path.split('/')[-1])
-        k = 3
-        mrr, recall = evaluate(myItemCF, test_X, test_y, k)
-        print("MRR@%d: %.6f" % (k, mrr))
-        print("Recall@%d: %.6f" % (k, recall))
+        k = 40
+        mrr, recall = evaluate(myItemCF, SID, test_X, test_y, k)
+        print("MRR@%d: %.4f" % (k, mrr))
+        print("Recall@%d: %.4f" % (k, recall))
 
     else:
         print("Loading train data...")
