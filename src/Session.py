@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # try to leave only training row that have something appear in candidates
     train_sessions = []
     for i in range( len(train_labels) ):
-        if train_labels[i] in candidates or len(set(train_itemsets[i]) & set(candidates)) == 1:
+        if train_labels[i] in candidates or len(set(train_itemsets[i]) & set(candidates)) >= 1:
             train_sessions.append( [Session(train_itemsets[i], train_labels[i]), train_labels[i]] )
 
     test_sessions = [ [Session(items, label), label] for items, label in zip(test_itemsets, test_labels) ]
